@@ -18,6 +18,7 @@ function Deck() {
   /** Draws a deck of cards at initial render
    * Gets a deck ID
    */
+  // We can also store the entire deck result to get #remaining, first card etc
   useEffect(function fetchDeckWhenMounted() {
     async function fetchDeck () {
       const deckResult = await axios.get(`${BASE_URL}new/`);
@@ -29,18 +30,23 @@ function Deck() {
   /** Draws a card from a deck
    * Only activates when button is clicked
    */
-  useEffect(function drawCardOnCardDraw() {
+  useEffect(function drawCardAndSetCards() {
     async function drawCard() {
       try{
         const cardResult = await axios.get(`${BASE_URL}${deckId}/draw`);
         setCards(cards => 
-            [...cards, {drawnCards:cardResult.data.cards}]);
-      } catch {
+            [...cards, {code:cardResult.data.cards[0].code,
+                        image:cardResult.data.cards[0].image,
+                        value:cardResult.data.cards[0].value,
+                        suit:cardResult.data.cards[0].suit
+                      }]);
+      } catch(err) {
+        console.log(err);
       }
-        setIsClicked(false);
+      setIsClicked(false);
     } 
     if(isClicked === true && deckId) drawCard();
-  }, [isClicked]);
+  }, [isClicked, deckId]);
 
   /** Sets isClicked state to true when draw button is clicked */
   function handleDraw(evt) {
@@ -49,18 +55,22 @@ function Deck() {
   }
   console.log("all cards--->", cards)
 
+  function renderCards(){
+    return cards.map(card =>(
+      <Card key={card.code} 
+            image={card.image}
+            value={card.value} 
+            suit={card.suit}/>
+    ))
+  }
+
   return (
     <div>
       {(cards.length === 52) ?
       <h2>Error: no cards remaining!</h2> 
       :<div>
         <button onClick={handleDraw}>GIMME A CARD!</button>
-        {cards.map(card =>(
-          <Card key={card.drawnCards[0].code} 
-                image={card.drawnCards[0].image}
-                value={card.drawnCards[0].value} 
-                suit={card.drawnCards[0].suit}/>
-        ))}
+        {renderCards()}
       </div>
       }
     </div>
