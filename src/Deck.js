@@ -6,21 +6,22 @@ const BASE_URL = "https://deckofcardsapi.com/api/deck/";
 
 /** A deck of cards 
  * 
- * Deck actions: Gets a new deck of cards (via deckId), draws a new card
+ * Deck actions: Gets a new deck of cards (via deckId), draws a new card, shuffles the deck
  * 
  * App --> Deck --> Card
 */
 function Deck() {
   const [cards, setCards] = useState([]);
   const [deckId, setDeckId] = useState("");
-  const [isClicked, setIsClicked] = useState(false);
+  const [toDraw, setToDraw] = useState(false); // isDrawing
+  const [toShuffle, setToShuffle] = useState(false); //hasShuffled, isShuffle
 
   /** Draws a deck of cards at initial render
    * Gets a deck ID
    */
   // We can also store the entire deck result to get #remaining, first card etc
   useEffect(function fetchDeckWhenMounted() {
-    async function fetchDeck () {
+    async function fetchDeck() {
       const deckResult = await axios.get(`${BASE_URL}new/`);
       setDeckId(deckResult.data.deck_id);
     }
@@ -32,46 +33,72 @@ function Deck() {
    */
   useEffect(function drawCardAndSetCards() {
     async function drawCard() {
-      try{
+      try {
         const cardResult = await axios.get(`${BASE_URL}${deckId}/draw`);
-        setCards(cards => 
-            [...cards, {code:cardResult.data.cards[0].code,
-                        image:cardResult.data.cards[0].image,
-                        value:cardResult.data.cards[0].value,
-                        suit:cardResult.data.cards[0].suit
-                      }]);
-      } catch(err) {
-        console.log(err);
+        const { code, image, value, suit } = cardResult.data.cards[0];
+        setCards(cards => [...cards, { code, image, value, suit }]);
+      } catch (err) {
+        console.error(err);
       }
-      setIsClicked(false);
-    } 
-    if(isClicked === true && deckId) drawCard();
-  }, [isClicked, deckId]);
+      setToDraw(false);
+    }
+    if (toDraw === true) drawCard();
+  }, [toDraw, deckId]);
 
-  /** Sets isClicked state to true when draw button is clicked */
-  function handleDraw(evt) {
+  /** Shuffles the deck
+ * Only activates when shuffle button is clicked
+ */
+  useEffect(function shuffleDeckAndSetToShuffle() {
+    async function shuffleDeck() {
+      try {
+        await axios.get(`${BASE_URL}${deckId}/shuffle`);
+        setCards([]);
+      } catch (err) {
+        console.error(err);
+      }
+      setToShuffle(false);
+    }
+    if (toShuffle === true) shuffleDeck();
+  }, [toShuffle, deckId]);
+
+
+  /** Sets toDraw state to true when draw button is clicked */
+  function handleDraw(evt) { // just draw
     console.log("Button clicked");
-    setIsClicked(true);
+    setToDraw(true);
   }
-  console.log("all cards--->", cards)
 
-  function renderCards(){
-    return cards.map(card =>(
-      <Card key={card.code} 
-            image={card.image}
-            value={card.value} 
-            suit={card.suit}/>
+
+  /** Sets toShuffle state to true when draw button is clicked */
+  function handleShuffle(evt) { // shuffle-- startShuffle
+    if (toShuffle) return;
+    console.log("shuffled!!!")
+    setToShuffle(true)
+  }
+
+  /** renders the deck of cards */
+  function renderCards() {
+    return cards.map(card => (
+      <Card key={card.code}
+        image={card.image}
+        value={card.value}
+        suit={card.suit} />
     ))
+  }
+  /** renders error message when deck is depleted*/
+  function renderError() {
+    return <h2>Error: no cards remaining!</h2>
   }
 
   return (
     <div>
+      <button onClick={handleShuffle}>Shuffle!</button>
       {(cards.length === 52) ?
-      <h2>Error: no cards remaining!</h2> 
-      :<div>
-        <button onClick={handleDraw}>GIMME A CARD!</button>
-        {renderCards()}
-      </div>
+        { renderError }
+        : <div>
+          <button onClick={handleDraw}>GIMME A CARD!</button>
+          {renderCards()}
+        </div>
       }
     </div>
   )
